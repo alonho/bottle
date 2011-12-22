@@ -1,83 +1,146 @@
 {-# OPTIONS -Wall #-}
-{-# LANGUAGE TemplateHaskell, DeriveFunctor, FlexibleInstances,
-             MultiParamTypeClasses, TupleSections #-}
+{-# LANGUAGE TemplateHaskell, DeriveFunctor, TupleSections, EmptyDataDecls, GADTs #-}
 module Graphics.UI.Bottle.Widget (
-  Widget(..), image, eventMap, takesFocus, whenFocused,
-  atImageWithSize, atImage, atHasFocus, atMaybeEventMap, liftView, removeExtraSize,
-  strongerKeys, weakerKeys) where
+  Widget(..), Position(..), Focusable(..),
+  image, eventMap, takesFocus,
+  atImageWithSize, atImage, liftView,
+  getFocusable,
+  strongerKeys, weakerKeys,
+  drawNoFocus, maybeFocusable) where
 
-import Control.Applicative (liftA2)
-import Control.Arrow (first, second)
-import Control.Newtype (unpack, over)
-import Control.Newtype.TH (mkNewTypes)
-import Data.Record.Label (getL)
+-- TODO:
+-- Cursor type is related to the widget type.
+
+-- The cursor needs to persist, but the widget is recreated from
+-- scratch
+
+-- How do we guarantee, statically, that the generated widget will
+-- match the persisted cursor?
+
+import Data.Record.Label (getL, modL, mkLabels, (:->), lens)
 import Data.Monoid (Monoid(..))
 import Graphics.DrawingCombinators.Utils(Image)
 import Graphics.UI.Bottle.EventMap (EventMap)
 import Graphics.UI.Bottle.SizeRange (Size)
 import Graphics.UI.Bottle.Sized (Sized)
-import qualified Graphics.UI.Bottle.SizeRange as SizeRange
 import qualified Graphics.UI.Bottle.Sized as Sized
-
-type HasFocus = Bool
-
-type UserIO k = (Image, Maybe (EventMap k))
-
-newtype Widget k = Widget (HasFocus -> Sized (UserIO k))
-  deriving (Functor)
-$(mkNewTypes [''Widget])
-
-liftView :: Sized Image -> Widget a
-liftView = Widget . const . fmap (, Nothing)
-
-argument :: (a -> b) -> (b -> c) -> a -> c
-argument = flip (.)
 
 result :: (b -> c) -> (a -> b) -> a -> c
 result = (.)
 
-atHasFocus :: (Bool -> Bool) -> Widget a -> Widget a
-atHasFocus = over Widget . argument
+data UserIO a = UserIO {
+  _image :: Image,
+  _eventMap :: EventMap a
+  }
+  deriving (Functor)
+$(mkLabels [''UserIO])
 
-atSized :: (Sized (UserIO k) -> Sized (UserIO k')) -> Widget k -> Widget k'
-atSized = over Widget . result
+atEventMap :: (EventMap a -> EventMap b) -> UserIO a -> UserIO b
+atEventMap f (UserIO i em) = UserIO i (f em)
 
-atMaybeEventMap :: (Maybe (EventMap a) -> Maybe (EventMap b)) -> Widget a -> Widget b
-atMaybeEventMap = atSized . fmap . second
+data Position = Position -- TODO
 
-removeExtraSize :: Widget a -> Widget a
-removeExtraSize = atSized f
+data Focusable cursor a = Focusable {
+  enter :: Position -> cursor,
+  mkUserIO :: cursor -> Sized (UserIO (cursor, a))
+  }
+  deriving (Functor)
+
+atMkUserIO ::
+  ((cursor -> Sized (UserIO (cursor, a))) ->
+   cursor -> Sized (UserIO (cursor, b))) ->
+  Focusable cursor a -> Focusable cursor b
+atMkUserIO f (Focusable e mu) = Focusable e (f mu)
+
+-- mcursor
+data RejectsFocus
+data AcceptsFocus cursor
+
+data MaybeFocusable mcursor a where
+  NoFocusable :: MaybeFocusable RejectsFocus a
+  HaveFocusable :: Focusable cursor a -> MaybeFocusable (AcceptsFocus cursor) a
+
+instance Functor (MaybeFocusable mcursor) where
+  fmap _ NoFocusable = NoFocusable
+  fmap f (HaveFocusable focusable) = HaveFocusable $ fmap f focusable
+
+data Widget mcursor a = Widget {
+  _maybeFocusable :: MaybeFocusable mcursor a,
+  _drawNoFocus :: Sized Image
+  } deriving (Functor)
+$(mkLabels [''Widget])
+
+-- modL is too monomorphic
+atMaybeFocusable ::
+  (MaybeFocusable mcursor0 a0 -> MaybeFocusable mcursor1 a1) ->
+  Widget mcursor0 a0 -> Widget mcursor1 a1
+atMaybeFocusable f (Widget mf dnf) = Widget (f mf) dnf
+
+atHaveFocusable ::
+  (Focusable cursor a -> Focusable cursor b) ->
+  Widget (AcceptsFocus cursor) a -> Widget (AcceptsFocus cursor) b
+atHaveFocusable chgFocusable = atMaybeFocusable chgMaybeFocusable
   where
-    f sized = (Sized.atFromSize . argument) (liftA2 cap maxSize) sized
-      where
-        cap Nothing y = y
-        cap (Just x) y = min x y
-        maxSize = getL SizeRange.srMaxSize $ Sized.requestedSize sized
+    chgMaybeFocusable (HaveFocusable focusable) = HaveFocusable (chgFocusable focusable)
 
-atImageWithSize :: (Size -> Image -> Image) -> Widget a -> Widget a
-atImageWithSize f = atSized . Sized.atFromSize $ g
+liftView :: Sized Image -> Widget RejectsFocus a
+liftView = Widget NoFocusable
+
+atEventMapWithCursor ::
+  (cursor -> EventMap (cursor, a) -> EventMap (cursor, b)) ->
+  Widget (AcceptsFocus cursor) a -> Widget (AcceptsFocus cursor) b
+atEventMapWithCursor mkEventMap =
+  atHaveFocusable . atMkUserIO $ inMkUserIO
   where
-    g mkUserIO size = first (f size) (mkUserIO size)
+    inMkUserIO cursorToSized cursor =
+      (fmap . atEventMap) (mkEventMap cursor)
+        (cursorToSized cursor)
 
-atImage :: (Image -> Image) -> Widget a -> Widget a
+strongerKeys :: EventMap a -> Widget (AcceptsFocus cursor) a -> Widget (AcceptsFocus cursor) a
+strongerKeys em = atEventMapWithCursor f
+  where
+    f cursor oldEventMap = mappend oldEventMap $ fmap (cursor,) em
+
+weakerKeys :: EventMap a -> Widget (AcceptsFocus cursor) a -> Widget (AcceptsFocus cursor) a
+weakerKeys em = atEventMapWithCursor f
+  where
+    f cursor oldEventMap =
+      flip mappend oldEventMap $ fmap (cursor,) em
+
+atImageWithSize ::
+  (Size -> Image -> Image) -> Widget mcursor a -> Widget mcursor a
+atImageWithSize chgImage =
+  (modL drawNoFocus . Sized.atFromSize) mkImageWrap .
+  atMaybeFocusable chgFocusable
+  where
+    chgFocusable NoFocusable = NoFocusable
+    chgFocusable (HaveFocusable focusable) =
+      HaveFocusable $ (atMkUserIO . result . Sized.atFromSize)
+                      mkUserIOWrap focusable
+
+    -- mkUserIOWrap :: (Size -> UserIO (cursor, a)) ->
+    --                  Size -> UserIO (cursor, a)
+    mkUserIOWrap makeUserIO size = modL image (chgImage size) (makeUserIO size)
+
+    mkImageWrap mkImage size = chgImage size (mkImage size)
+
+atImage :: (Image -> Image) -> Widget mcursor a -> Widget mcursor a
 atImage = atImageWithSize . const
 
-image :: Widget k -> HasFocus -> Size -> Image
-image = fmap (fmap fst . Sized.fromSize) . unpack
+getFocusable :: Widget (AcceptsFocus cursor) a -> Focusable cursor a
+getFocusable Widget { _maybeFocusable = HaveFocusable focusable } = focusable
 
-eventMap :: Widget k -> HasFocus -> Size -> Maybe (EventMap k)
-eventMap = fmap (fmap snd . Sized.fromSize) . unpack
-
-takesFocus :: Widget a -> Widget a
-takesFocus = atMaybeEventMap $ maybe (Just mempty) Just
-
-whenFocused :: (Widget k -> Widget k) -> Widget k -> Widget k
-whenFocused f widget = Widget mkSized
+takesFocus :: Widget RejectsFocus a -> Widget (AcceptsFocus ()) a
+takesFocus widget =
+  (atMaybeFocusable . const) (HaveFocusable focusable) widget
   where
-    mkSized hf = (unpack . if hf then f else id) widget hf
+    makeUserIO img = UserIO { _image = img, _eventMap = mempty }
+    focusable = Focusable {
+      enter = const (),
+      mkUserIO = const . fmap makeUserIO $ getL drawNoFocus widget
+      }
 
-strongerKeys :: EventMap a -> Widget a -> Widget a
-strongerKeys = atMaybeEventMap . mappend . Just
-
-weakerKeys :: EventMap a -> Widget a -> Widget a
-weakerKeys = atMaybeEventMap . flip mappend . Just
+-- whenFocused :: (Widget k -> Widget k) -> Widget k -> Widget k
+-- whenFocused f widget = Widget mkSized
+--   where
+--     mkSized hf = (unpack . if hf then f else id) widget hf

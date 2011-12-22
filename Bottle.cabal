@@ -57,6 +57,7 @@ Library
                        Data.Store.BottleWidgets
 
   Build-depends:       base >= 4,
+                       void >= 0.5,
                        GLFW-b >= 0.0.2,
                        derive >= 2.5,
                        graphics-drawingcombinators >= 1.4,
