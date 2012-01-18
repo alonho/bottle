@@ -16,7 +16,7 @@ import Data.Store.Transaction (Transaction)
 import Editor.Anchors (DBTag, ViewTag, Cursor)
 import Editor.Data (ITreeD)
 import Graphics.UI.Bottle.MainLoop(mainLoopWidget)
-import Graphics.UI.Bottle.Widget (Widget)
+import Graphics.UI.Bottle.Widget (FWidget)
 import Prelude hiding ((.))
 import qualified AnimIds
 import qualified Data.Binary.Utils as BinUtils
@@ -41,7 +41,7 @@ import qualified Graphics.UI.Bottle.Widgets.TextView as TextView
 import qualified System.Info
 
 type TWidget t m =
-  Cursor -> Transaction t m (Widget (Transaction t m Cursor))
+  Cursor -> Transaction t m (FWidget (Transaction t m Cursor))
 
 focusableTextView :: Monad m => TextEdit.Style -> [String] -> Anim.AnimId -> TWidget t m
 focusableTextView style textLines animId cursor =
@@ -324,7 +324,7 @@ deleteCurrentBranch = do
 makeRootWidget ::
   Monad m =>
   TextEdit.Style -> Cursor ->
-  Transaction DBTag m (Widget (Transaction DBTag m Cursor))
+  Transaction DBTag m (FWidget (Transaction DBTag m Cursor))
 makeRootWidget style cursor = do
   view <- Property.get Anchors.view
   namedBranches <- Property.get Anchors.branches

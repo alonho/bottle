@@ -4,7 +4,7 @@ module Graphics.UI.Bottle.Widgets.FocusDelegator(Cursor(..), make, defaultKeys) 
 
 import Data.Maybe(fromMaybe)
 import Data.Monoid(mappend)
-import Graphics.UI.Bottle.Widget(Widget(..))
+import Graphics.UI.Bottle.Widget(FWidget(..))
 import qualified Graphics.DrawingCombinators as Draw
 import qualified Graphics.UI.Bottle.Animation as Anim
 import qualified Graphics.UI.Bottle.EventMap as E
@@ -28,7 +28,7 @@ blue = Draw.Color 0 0 1 1
 
 makeFocused ::
   Cursor -> k -> Keys -> Anim.AnimId ->
-  Widget k -> Widget k
+  FWidget k -> FWidget k
 makeFocused delegating focusSelf keys backgroundCursorId =
   handleFocus delegating
   where
@@ -61,7 +61,7 @@ make ::
   k -> -- ^ Enter/Stop delegating value
   Keys -> -- ^ Keys configuration
   Anim.AnimId -> -- ^ Background AnimId
-  Widget k -> Widget k
+  FWidget k -> FWidget k
 make NotDelegating Nothing focusSelf _ _ = Widget.atMaybeEnter . const $ Just (const focusSelf)
 make Delegating Nothing  _     _ _ = id
 make _ (Just cursor) focusSelf keys backgroundCursorId = makeFocused cursor focusSelf keys backgroundCursorId

@@ -12,7 +12,7 @@ import Data.Monoid (Monoid(..))
 import Data.Ord (comparing)
 import Data.Vector.Vector2 (Vector2(..))
 import Graphics.UI.Bottle.EventMap (EventMap)
-import Graphics.UI.Bottle.Widget (Widget(..))
+import Graphics.UI.Bottle.Widget (FWidget(..))
 import qualified Graphics.UI.Bottle.EventMap as EventMap
 import qualified Graphics.UI.Bottle.Widget as Widget
 import qualified Graphics.UI.Bottle.Widgets.GridView as GridView
@@ -70,7 +70,7 @@ mkNavEventmap mEnterChildren cursor@(Vector2 cursorX cursorY) =
 -- makeHelper :: Bool -> Cursor -> Cursor -> [[Widget k]] -> Widget k
 -- makeHelper isFocused =
 
-getCursor :: [[Widget k]] -> Maybe Cursor
+getCursor :: [[FWidget k]] -> Maybe Cursor
 getCursor =
   fmap cursorOf . find (wIsFocused . snd) . concat . enumerate2d
   where
@@ -78,9 +78,9 @@ getCursor =
 
 makeHelper ::
   ([[Widget.MEnter k]] -> Widget.MEnter k) ->
-  [[Widget k]] -> Widget k
+  [[FWidget k]] -> FWidget k
 makeHelper combineEnters children =
-  Widget {
+  FWidget {
     wIsFocused = isJust mCursor,
     wContent =
       fmap combineUserIOs .
@@ -116,8 +116,8 @@ makeEnter =
     maximumOn = maximumBy . comparing
 
 -- ^ If unfocused, will enters the given child when entered
-makeBiased :: Cursor -> [[Widget k]] -> Widget k
+makeBiased :: Cursor -> [[FWidget k]] -> FWidget k
 makeBiased (Vector2 x y) = makeHelper (index y >=> index x >=> id)
 
-make :: [[Widget k]] -> Widget k
+make :: [[FWidget k]] -> FWidget k
 make = makeHelper makeEnter

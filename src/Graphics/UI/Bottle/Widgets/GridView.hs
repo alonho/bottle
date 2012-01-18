@@ -11,7 +11,7 @@ import Data.Monoid (Monoid(..))
 import Data.Vector.Vector2 (Vector2(..))
 import Graphics.UI.Bottle.SizeRange (SizeRange(..), Size, Coordinate)
 import Graphics.UI.Bottle.Sized (Sized(..))
-import Graphics.UI.Bottle.Widget (Widget(..))
+import Graphics.UI.Bottle.Widget (FWidget(..))
 import qualified Graphics.UI.Bottle.Widget as Widget
 import qualified Data.Record.Label as Label
 import qualified Data.Vector.Vector2 as Vector2
@@ -93,9 +93,9 @@ make = fmap fst . makeGeneric id
 -- ^ This will send events to the first widget in the list that would
 -- take them. It is useful especially for lifting views to widgets and
 -- composing them with widgets.
-makeFromWidgets :: [[Widget k]] -> Widget k
+makeFromWidgets :: [[FWidget k]] -> FWidget k
 makeFromWidgets widgets =
-  Widget {
+  FWidget {
     wIsFocused = any wIsFocused $ concat widgets,
     wContent =
       fmap combineEventHandlers .

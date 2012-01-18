@@ -11,7 +11,7 @@ import Data.Vector.Vector2 (Vector2(..))
 import Graphics.DrawingCombinators.Utils (square, textHeight)
 import Graphics.UI.Bottle.SizeRange (fixedSize)
 import Graphics.UI.Bottle.Sized (Sized(..))
-import Graphics.UI.Bottle.Widget (Widget(..))
+import Graphics.UI.Bottle.Widget (FWidget(..))
 import Graphics.UI.GLFW (Key(KeyBackspace, KeyDel, KeyDown, KeyEnd, KeyEnter, KeyHome, KeyLeft, KeyRight, KeyUp))
 import qualified Data.Vector.Vector2 as Vector2
 import qualified Graphics.DrawingCombinators as Draw
@@ -52,7 +52,7 @@ makeDisplayStr _        str = str
 cursorTranslate :: Style -> Anim.Frame -> Anim.Frame
 cursorTranslate style = Anim.translate (Vector2 (sCursorWidth style / 2) 0)
 
-makeUnfocused :: Style -> String -> Anim.AnimId -> Widget (Cursor, String)
+makeUnfocused :: Style -> String -> Anim.AnimId -> FWidget (Cursor, String)
 makeUnfocused style str =
   Widget.takesFocus enter .
   Widget.atImage
@@ -69,7 +69,7 @@ makeUnfocused style str =
 -- what "Font" should be)
 -- | Note: maxLines prevents the *user* from exceeding it, not the
 -- | given text...
-makeFocused :: Style -> String -> Cursor -> String -> Anim.AnimId -> Widget (Cursor, String)
+makeFocused :: Style -> String -> Cursor -> String -> Anim.AnimId -> FWidget (Cursor, String)
 makeFocused style emptyStr cursor str animId =
   Widget.atImageWithSize
     (Anim.backgroundColor (sBackgroundCursorId style) 10 blue) .
@@ -77,7 +77,7 @@ makeFocused style emptyStr cursor str animId =
   Widget.strongerKeys eventMap $
   widget
   where
-    widget = Widget {
+    widget = FWidget {
       wIsFocused = True,
       wContent =
         Sized reqSize . const $
@@ -234,7 +234,7 @@ makeFocused style emptyStr cursor str animId =
         cursor' = cursor + length l
         str' = concat [before, l, after]
 
-make :: Style -> String -> Maybe Cursor -> String -> Anim.AnimId -> Widget (Cursor, String)
+make :: Style -> String -> Maybe Cursor -> String -> Anim.AnimId -> FWidget (Cursor, String)
 make style emptyStr (Just cursor) str =
   makeFocused style emptyStr cursor str
 make style _        Nothing       str =

@@ -8,7 +8,7 @@ import Data.Monoid (Monoid(..))
 import Data.Vector.Vector2(Vector2(..))
 import Graphics.UI.Bottle.SizeRange (fixedSize)
 import Graphics.UI.Bottle.Sized (Sized(..))
-import Graphics.UI.Bottle.Widget (Widget, liftView)
+import Graphics.UI.Bottle.Widget (FWidget, liftView)
 import qualified Data.ByteString.Char8 as SBS8
 import qualified Data.Vector.Vector2 as Vector2
 import qualified Graphics.DrawingCombinators as Draw
@@ -58,5 +58,5 @@ make style textLines animId = Sized (fixedSize textSize) . const $ frame animId
   where
     (frame, textSize) = drawText False style textLines
 
-makeWidget :: Style -> [String] -> Anim.AnimId -> Widget a
+makeWidget :: Style -> [String] -> Anim.AnimId -> FWidget a
 makeWidget style textLines = liftView . make style textLines

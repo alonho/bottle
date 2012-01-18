@@ -12,7 +12,7 @@ import Graphics.DrawingCombinators ((%%))
 import Graphics.DrawingCombinators.Utils (Image)
 import Graphics.UI.Bottle.EventMap (Event)
 import Graphics.UI.Bottle.SizeRange (Size)
-import Graphics.UI.Bottle.Widget(Widget)
+import Graphics.UI.Bottle.Widget(FWidget)
 import Graphics.UI.GLFW (defaultDisplayOptions, getWindowDimensions)
 import Graphics.UI.GLFW.Events (GLFWEvent(..), eventLoop)
 import qualified Graphics.DrawingCombinators as Draw
@@ -112,7 +112,7 @@ mainLoopAnim eventHandler makeFrame = do
 
   mainLoopImage eventHandler makeImage
 
-mainLoopWidget :: IO (Widget (IO ())) -> IO a
+mainLoopWidget :: IO (FWidget (IO ())) -> IO a
 mainLoopWidget mkWidget =
   mainLoopAnim eventHandler mkImage
   where

@@ -3,7 +3,7 @@
 module Graphics.UI.Bottle.Widgets.Box(Cursor, make, makeBiased, Orientation, horizontal, vertical) where
 
 import Data.Vector.Vector2(Vector2(..))
-import Graphics.UI.Bottle.Widget(Widget)
+import Graphics.UI.Bottle.Widget(FWidget)
 import qualified Graphics.UI.Bottle.Widgets.Grid as Grid
 
 type Cursor = Int
@@ -25,9 +25,9 @@ vertical = Orientation {
   oToGridChildren = map (: [])
   }
 
-make :: Orientation -> [Widget k] -> Widget k
+make :: Orientation -> [FWidget k] -> FWidget k
 make (Orientation _ toGridChildren) = Grid.make . toGridChildren
 
-makeBiased :: Orientation -> Cursor -> [Widget k] -> Widget k
+makeBiased :: Orientation -> Cursor -> [FWidget k] -> FWidget k
 makeBiased (Orientation toGridCursor toGridChildren) cursor =
   Grid.makeBiased (toGridCursor cursor) . toGridChildren
