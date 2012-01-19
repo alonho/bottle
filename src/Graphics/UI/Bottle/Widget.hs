@@ -1,7 +1,7 @@
 {-# OPTIONS -Wall #-}
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses #-}
 module Graphics.UI.Bottle.Widget (
-  FWidget(..), MEnter, Direction,
+  Widget, FWidget(..), MEnter, Direction,
   UserIO(..), atContent, atIsFocused,
   atUioMaybeEnter, atUioEventMap, atUioFrame,
   userIO, image, eventMap, enter,
@@ -46,6 +46,11 @@ data FWidget a = FWidget {
   wContent :: Sized (UserIO a)
   }
   deriving (Functor)
+
+-- TODO: ObjectId
+type Cursor = Anim.AnimId
+
+type Widget a = Cursor -> FWidget a
 
 atIsFocused :: (Bool -> Bool) -> FWidget a -> FWidget a
 atIsFocused f w = w { wIsFocused = f (wIsFocused w) }
